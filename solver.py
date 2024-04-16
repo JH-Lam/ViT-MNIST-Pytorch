@@ -60,8 +60,8 @@ class Solver(object):
 
     def train(self):
         iter_per_epoch = len(self.train_loader)
-
-        optimizer = optim.AdamW(self.model.parameters(), self.args.lr, weight_decay=1e-3)
+        # https://zh.d2l.ai/chapter_multilayer-perceptrons/weight-decay.html
+        optimizer = optim.AdamW(self.model.parameters(), self.args.lr, weight_decay=1e-3) # AdamW is Adam+Weight decay
         cos_decay = optim.lr_scheduler.CosineAnnealingLR(optimizer, self.args.epochs)
 
         for epoch in range(self.args.epochs):
@@ -83,6 +83,7 @@ class Solver(object):
                     print('Ep: %d/%d, it: %d/%d, err: %.4f' % (
                     epoch + 1, self.args.epochs, i + 1, iter_per_epoch, clf_loss))
 
+            # -only do acc on test set afer training is finished for each epoch
             test_acc, cm = self.test_dataset('test')
             print("Test acc: %0.2f" % test_acc)
             print(cm, "\n")

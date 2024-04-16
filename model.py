@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
-
+'''
+-总体上与d2l大同小异，可能是一些变化/魔改
+'''
 # B -> Batch Size
 # C -> Number of Input Channels
 # IH -> Image Height
@@ -21,7 +23,7 @@ class EmbedLayer(nn.Module):
         super(EmbedLayer, self).__init__()
         self.args = args
         self.conv1 = nn.Conv2d(args.n_channels, args.embed_dim, kernel_size=args.patch_size,
-                               stride=args.patch_size)  # Pixel Encoding
+                               stride=args.patch_size)  # Pixel Encoding;-Conv2d实际上是常规立体卷积(一般图像适用)，Conv3d比前者多了序列一个维度
         self.cls_token = nn.Parameter(torch.zeros(1, 1, args.embed_dim), requires_grad=True)  # Cls Token
         self.pos_embedding = nn.Parameter(torch.zeros(1, (args.img_size // args.patch_size) ** 2 + 1, args.embed_dim),
                                           requires_grad=True)  # Positional Embedding
@@ -30,8 +32,8 @@ class EmbedLayer(nn.Module):
         x = self.conv1(x)  # B C IH IW -> B E IH/P IW/P
         x = x.reshape([x.shape[0], self.args.embed_dim, -1])  # B E IH/P IW/P -> B E S
         x = x.transpose(1, 2)  # B E S -> B S E
-        x = torch.cat((torch.repeat_interleave(self.cls_token, x.shape[0], 0), x), dim=1)
-        x = x + self.pos_embedding
+        x = torch.cat((torch.repeat_interleave(self.cls_token, x.shape[0], 0), x), dim=1) # d2l中使用 cls_token.extend()
+        x = x + self.pos_embedding # d2l中还有dropout一层包装
         return x
 
 
@@ -79,7 +81,8 @@ class Encoder(nn.Module):
     def __init__(self, args):
         super(Encoder, self).__init__()
         self.attention = AttentionLayer(args)
-        self.fc1 = nn.Linear(args.embed_dim, args.embed_dim * args.forward_mul)
+        self.fc1 = nn.Linear(args.embed_dim,
+                             args.embed_dim * args.forward_mul) #-this param is as 'mlp_num_hidden' in d2l, ie. 2048
         self.activation = nn.GELU()
         self.fc2 = nn.Linear(args.embed_dim * args.forward_mul, args.embed_dim)
         self.norm1 = nn.LayerNorm(args.embed_dim)
@@ -88,7 +91,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         x_ = self.attention(x, x, x)
         x = x + x_
-        x = self.norm1(x)
+        x = self.norm1(x) # -here is post-normalization while it's pre-normalization in d2l
         x_ = self.fc1(x)
         x_ = self.activation(x_)
         x_ = self.fc2(x_)
@@ -106,6 +109,7 @@ class Classifier(nn.Module):
 
     def forward(self, x):
         x = x[:, 0, :]  # Get CLS token
+        ''' in d2l，it's “norm + one layer FC” '''
         x = self.fc1(x)
         x = self.activation(x)
         x = self.fc2(x)
@@ -119,7 +123,7 @@ class VisionTransformer(nn.Module):
         self.encoder = nn.Sequential(*[Encoder(args) for _ in range(args.n_layers)], nn.LayerNorm(args.embed_dim))
         self.classifier = Classifier(args)
 
-        # Initialization
+        # Initialization - d2l没有指定
         for m in self.modules():
             if isinstance(m, (nn.Linear, nn.Conv2d)):
                 nn.init.normal_(m.weight, mean=0.0, std=0.02)
