@@ -1,5 +1,6 @@
 # ViT-MNIST-Pytorch
-
+> official: https://github.com/JH-Lam/ViT-MNIST-Pytorch
+> 
 简化了Pytorch Vision Transformer（ViT）的实现，并提供了详细的步骤。
 
 该网络是[An Image is Worth 16X16 Words](https://arxiv.org/pdf/2010.11929.pdf)原始架构的缩小版用于对MNIST数据集进行分类。
